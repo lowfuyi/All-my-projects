@@ -1,0 +1,4 @@
+results/*.json
+results/*.csv
+__pycache__/
+*.pyc
