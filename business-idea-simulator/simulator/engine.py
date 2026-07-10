@@ -9,6 +9,13 @@ Capital injections are cash, not profit: they keep the business alive
 longer but do NOT count toward the operating net-profit figure used to
 detect the negative-profit failure streak - injecting money into a bad
 business model just delays the reckoning, exactly like in real life.
+
+Failure and success are tracked by two INDEPENDENT counters:
+`consecutive_negative` (raw net_profit < 0, drives bankruptcy/negative-streak
+failure) and `consecutive_qualifying` (net_profit >= 0 AND margin at or above
+success_min_margin, drives success). A month can be "not a failure" without
+"qualifying for success" - barely-positive-but-thin-margin months reset the
+success streak without triggering a failure streak.
 """
 
 import random
@@ -35,7 +42,7 @@ class SimulationEngine:
             cfg.min_failure_streak, cfg.max_failure_streak
         )
         consecutive_negative = 0
-        consecutive_positive = 0
+        consecutive_qualifying = 0
         customers = idea.starting_monthly_customers
 
         months = []
@@ -63,6 +70,7 @@ class SimulationEngine:
 
             net_profit = revenue - cogs - cac_spend - fixed_costs - event_costs
             cash += net_profit
+            margin = (net_profit / revenue) if revenue > 0 else -1.0
 
             months.append(
                 MonthRecord(
@@ -74,6 +82,7 @@ class SimulationEngine:
                     cac_spend=round(cac_spend, 2),
                     event_costs=round(event_costs, 2),
                     net_profit=round(net_profit, 2),
+                    margin=round(margin, 4),
                     capital_injection=cfg.monthly_capital_injection,
                     cash_balance=round(cash, 2),
                     event_names=[e.name for e in triggered],
@@ -82,10 +91,13 @@ class SimulationEngine:
 
             if net_profit < 0:
                 consecutive_negative += 1
-                consecutive_positive = 0
             else:
-                consecutive_positive += 1
                 consecutive_negative = 0
+
+            if net_profit >= 0 and margin >= cfg.success_min_margin:
+                consecutive_qualifying += 1
+            else:
+                consecutive_qualifying = 0
 
             if cash <= 0:
                 outcome = "bankrupt"
@@ -93,7 +105,10 @@ class SimulationEngine:
             if consecutive_negative >= failure_streak_threshold:
                 outcome = "negative_streak"
                 break
-            if consecutive_positive >= cfg.success_streak_months:
+            if (
+                consecutive_qualifying >= cfg.success_streak_months
+                and cash >= cfg.success_min_cash_multiple * idea.fixed_costs
+            ):
                 outcome = "success"
                 break
 

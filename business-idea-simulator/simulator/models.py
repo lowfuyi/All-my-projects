@@ -22,6 +22,7 @@ class MonthRecord:
     cac_spend: float
     event_costs: float
     net_profit: float
+    margin: float
     capital_injection: float
     cash_balance: float
     event_names: List[str] = field(default_factory=list)

@@ -4,9 +4,11 @@ import csv
 import json
 from dataclasses import asdict
 from pathlib import Path
+from typing import Optional
 
 from .ideas import BusinessIdea
 from .models import IdeaOutcome, RootCauseReport
+from .validation import GraduationResult
 
 
 class SimulationLogger:
@@ -19,6 +21,7 @@ class SimulationLogger:
     def log_idea_start(self, iteration: int, idea: BusinessIdea) -> None:
         print(f"\n{'=' * 70}")
         print(f"Iteration {iteration}: Testing '{idea.name}' ({idea.category})")
+        print(idea.description)
         print(f"{'-' * 70}")
 
     def log_idea_result(self, iteration: int, idea: BusinessIdea, outcome: IdeaOutcome) -> None:
@@ -47,17 +50,80 @@ class SimulationLogger:
     def log_next_pick(self, next_idea: BusinessIdea) -> None:
         print(f"\nNext idea selected: '{next_idea.name}' ({next_idea.category})")
 
-    def log_final_success(self, iteration: int, idea: BusinessIdea) -> None:
+    def log_graduation_result(self, idea: BusinessIdea, grad: GraduationResult) -> None:
+        print(
+            f"\n'{idea.name}' cleared the single-run success bar - validating with "
+            f"{grad.trials_run} repeated trials..."
+        )
+        breakdown = ", ".join(f"{count}x {name}" for name, count in grad.outcome_breakdown.most_common())
+        print(f"  Graduation result: {grad.successes}/{grad.trials_run} succeeded ({grad.win_rate:.0%} win rate)")
+        print(f"  Trial breakdown: {breakdown}")
+        print(f"  {'PASSED' if grad.passed else 'DID NOT PASS'} the graduation threshold.")
+
+        path = self.results_dir / f"{idea.id}_graduation.json"
+        payload = {
+            "idea": asdict(idea),
+            "trials_run": grad.trials_run,
+            "successes": grad.successes,
+            "win_rate": grad.win_rate,
+            "passed": grad.passed,
+            "outcome_breakdown": dict(grad.outcome_breakdown),
+        }
+        path.write_text(json.dumps(payload, indent=2))
+
+    def log_final_winner(self, iteration: int, idea: BusinessIdea, grad: GraduationResult) -> None:
         print(f"\n{'=' * 70}")
         print(
-            f"SUCCESS after {iteration} idea(s): '{idea.name}' sustained "
-            f"{idea.category} operations to a stable profit streak."
+            f"WINNER after {iteration} idea(s): '{idea.name}' ({idea.category})\n"
+            f"Validated across {grad.trials_run} repeated trials at a "
+            f"{grad.win_rate:.0%} empirical success rate."
         )
+        print(idea.description)
         print(f"{'=' * 70}")
 
-    def log_exhausted(self, max_ideas: int) -> None:
+        path = self.results_dir / "winner.json"
+        path.write_text(
+            json.dumps(
+                {
+                    "idea": asdict(idea),
+                    "graduation": {
+                        "trials_run": grad.trials_run,
+                        "successes": grad.successes,
+                        "win_rate": grad.win_rate,
+                        "passed": grad.passed,
+                    },
+                },
+                indent=2,
+            )
+        )
+
+    def log_exhausted_with_best_candidate(
+        self, max_ideas: int, best_candidate: Optional[dict]
+    ) -> None:
         print(f"\n{'=' * 70}")
-        print(f"Reached max-ideas limit ({max_ideas}) without a sustained success.")
+        print(f"Reached max-ideas limit ({max_ideas}) without any idea passing graduation.")
+        if best_candidate:
+            idea = best_candidate["idea"]
+            print(
+                f"NOT FULLY VALIDATED - strongest candidate observed: '{idea.name}' "
+                f"({idea.category}), {best_candidate['win_rate']:.0%} win rate across "
+                f"{best_candidate['trials_run']} trials. Treat this as a lead, not a "
+                "proven winner."
+            )
+            path = self.results_dir / "best_candidate_not_validated.json"
+            path.write_text(
+                json.dumps(
+                    {
+                        "idea": asdict(idea),
+                        "win_rate": best_candidate["win_rate"],
+                        "trials_run": best_candidate["trials_run"],
+                        "validated": False,
+                    },
+                    indent=2,
+                )
+            )
+        else:
+            print("No idea cleared even the single-run success bar in this run.")
         print(f"{'=' * 70}")
 
     def _write_idea_json(self, iteration: int, idea: BusinessIdea, outcome: IdeaOutcome) -> None:
@@ -83,6 +149,7 @@ class SimulationLogger:
                     "cac_spend",
                     "event_costs",
                     "net_profit",
+                    "margin",
                     "capital_injection",
                     "cash_balance",
                     "events",
@@ -99,6 +166,7 @@ class SimulationLogger:
                         m.cac_spend,
                         m.event_costs,
                         m.net_profit,
+                        m.margin,
                         m.capital_injection,
                         m.cash_balance,
                         "|".join(m.event_names),

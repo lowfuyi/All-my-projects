@@ -1,0 +1,30 @@
+[
+  {
+    "id": "subscription",
+    "label": "subscription",
+    "flavor_sentence": "Revenue is billed on a recurring subscription basis.",
+    "price": 1.0, "churn_add": 0.0, "edge_add": 0.0, "cogs_add": 0.0, "cac": 1.0, "cust_mult": 1.0,
+    "risk_traits": {}
+  },
+  {
+    "id": "one_time_purchase",
+    "label": "one-time purchase",
+    "flavor_sentence": "Revenue comes from one-time purchases rather than recurring billing.",
+    "price": 0.9, "churn_add": 0.05, "edge_add": 0.02, "cogs_add": 0.02, "cac": 0.9, "cust_mult": 1.0,
+    "risk_traits": {}
+  },
+  {
+    "id": "affiliate_ads",
+    "label": "affiliate/ads",
+    "flavor_sentence": "Revenue comes from affiliate commissions and ad placements rather than direct sales.",
+    "price": 0.6, "churn_add": 0.0, "edge_add": 0.0, "cogs_add": 0.0, "cac": 0.4, "cust_mult": 1.6,
+    "risk_traits": {"platform_dependency": 1.15, "regulatory_exposure": 1.15}
+  },
+  {
+    "id": "usage_based",
+    "label": "usage-based",
+    "flavor_sentence": "Revenue is billed based on usage volume rather than a flat recurring fee.",
+    "price": 1.1, "churn_add": -0.02, "edge_add": 0.0, "cogs_add": 0.03, "cac": 1.15, "cust_mult": 1.0,
+    "risk_traits": {}
+  }
+]

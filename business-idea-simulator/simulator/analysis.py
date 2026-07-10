@@ -91,3 +91,40 @@ class RootCauseAnalyzer:
             risk_tags_to_avoid=risk_tags_to_avoid,
             narrative=narrative,
         )
+
+    def analyze_batch(self, idea: BusinessIdea, outcomes: List[IdeaOutcome]) -> RootCauseReport:
+        """Aggregate root-cause analysis across every non-success outcome in a
+        graduation batch - a thicker signal than a single failed run when an
+        idea clears the single-run bar but fails repeated-trial validation."""
+        reports = [self.analyze(idea, outcome) for outcome in outcomes]
+
+        tag_counts: Counter = Counter()
+        for report in reports:
+            tag_counts.update(report.risk_tags_to_avoid)
+        risk_tags_to_avoid = [tag for tag, _ in tag_counts.most_common(5)]
+
+        outcome_counts = Counter(o.outcome for o in outcomes)
+        primary_causes = [
+            f"Across {len(outcomes)} graduation trial(s) that did not reach success: "
+            + ", ".join(f"{count}x {name}" for name, count in outcome_counts.most_common())
+        ]
+        for tag, count in tag_counts.most_common(5):
+            primary_causes.append(
+                f"'{tag.replace('_', ' ')}' contributed to failure in {count} of "
+                f"{len(outcomes)} trial(s)."
+            )
+
+        narrative = (
+            f"'{idea.name}' failed repeated-trial validation "
+            f"({len(outcomes)} non-success trial(s) analyzed). "
+            + " ".join(primary_causes)
+        )
+
+        return RootCauseReport(
+            idea_id=idea.id,
+            idea_name=idea.name,
+            outcome="graduation_failed",
+            primary_causes=primary_causes,
+            risk_tags_to_avoid=risk_tags_to_avoid,
+            narrative=narrative,
+        )
