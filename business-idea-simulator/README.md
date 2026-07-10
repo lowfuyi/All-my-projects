@@ -117,14 +117,20 @@ to comfortably absorb the longer success streak.
 
 **Layer 2 - repeated-trial validation ("graduation").** Clearing layer 1
 once doesn't crown a winner. `simulator/validation.py`'s
-`GraduationValidator` re-simulates the *same* idea **40 more times** (fresh
+`GraduationValidator` re-simulates the *same* idea **100 more times** (fresh
 capital and RNG each trial) and only declares it the final winner if its
-empirical success rate is **≥ 80%**. If it falls short, the idea (and its
-win rate) is remembered as the best candidate so far, a batch root-cause
-analysis steers the next idea pick, and the loop keeps going. If
-`--max-ideas` is exhausted with nothing graduating, the run reports the
-strongest candidate observed - clearly labeled **NOT FULLY VALIDATED** - so
-it's never mistaken for a proven winner.
+empirical success rate is **≥ 95%**. That's a genuinely hard bar - testing
+across the strongest archetypes showed true win rates typically in the
+50-92% range, with only the luckiest specific niche/monetization draws
+clearing 95% at all - so expect most candidates to fail graduation and the
+loop to need well more than a handful of ideas (median ~13-18 in testing,
+occasionally 40+) before one holds up; `max_ideas` defaults to **30**
+accordingly. If a candidate falls short, its win rate is remembered as the
+best candidate so far, a batch root-cause analysis steers the next idea
+pick, and the loop keeps going. If `--max-ideas` is exhausted with nothing
+graduating, the run reports the strongest candidate observed - clearly
+labeled **NOT FULLY VALIDATED** - so it's never mistaken for a proven
+winner.
 
 ### 7. Auto-iteration loop
 
@@ -141,7 +147,7 @@ it's never mistaken for a proven winner.
 5. `IdeaSelector` generates the next candidate combo, scored to avoid the
    accumulated risk traits.
 6. Capital resets to the defaults above and the loop repeats, up to
-   `--max-ideas` iterations (default 10) or until an idea graduates,
+   `--max-ideas` iterations (default 30) or until an idea graduates,
    whichever comes first.
 
 ## File structure
@@ -177,8 +183,8 @@ Useful flags:
 
 ```bash
 python3 run_simulator.py --seed 42                  # reproducible run
-python3 run_simulator.py --max-ideas 20               # try up to 20 ideas before giving up
-python3 run_simulator.py --graduation-trials 60 --graduation-threshold 0.85
+python3 run_simulator.py --max-ideas 50               # try up to 50 ideas before giving up
+python3 run_simulator.py --graduation-trials 40 --graduation-threshold 0.80  # loosen the bar
 python3 run_simulator.py --starting-capital 800 --monthly-injection 400
 python3 run_simulator.py --results-dir out
 ```

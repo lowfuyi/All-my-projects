@@ -35,15 +35,20 @@ class SimulationConfig:
     max_months_safety_cap: int = 78
 
     # Auto-Iteration Loop (rule 5): stop after this many ideas have been
-    # tried, win or lose.
-    max_ideas: int = 10
+    # tried, win or lose. At the 95%/100-trial graduation bar, most runs
+    # need well more than 10 tries before something graduates (median
+    # ~13-18 in testing, occasionally 40+), so this is set well above that.
+    max_ideas: int = 30
 
     # Graduation (repeated-trial validation): once an idea clears the
     # single-run success bar above, it's re-simulated this many more times
     # (fresh capital/RNG each trial) and only crowned the final winner if its
-    # empirical win rate clears graduation_win_rate_threshold.
-    graduation_trials: int = 40
-    graduation_win_rate_threshold: float = 0.80
+    # empirical win rate clears graduation_win_rate_threshold. At a 95%
+    # threshold each trial is worth 1 percentage point, giving a meaningful
+    # checkpoint right at the bar instead of the coarse 2.5%-per-trial
+    # resolution 40 trials would give at this altitude.
+    graduation_trials: int = 100
+    graduation_win_rate_threshold: float = 0.95
 
     # How many candidate archetype/niche/monetization combos the selector
     # samples per pick before scoring and choosing one.

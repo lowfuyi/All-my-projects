@@ -35,7 +35,7 @@ BASE_DIR = Path(__file__).resolve().parent
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Business Idea Simulator And Stress Test")
     parser.add_argument("--seed", type=int, default=None, help="RNG seed for reproducible runs")
-    parser.add_argument("--max-ideas", type=int, default=10, help="Stop after this many ideas tried")
+    parser.add_argument("--max-ideas", type=int, default=30, help="Stop after this many ideas tried")
     parser.add_argument(
         "--starting-capital", type=float, default=500.0, help="Starting capital (SGD)"
     )
@@ -52,13 +52,13 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--graduation-trials",
         type=int,
-        default=40,
+        default=100,
         help="Repeated trials used to validate a single-run winner",
     )
     parser.add_argument(
         "--graduation-threshold",
         type=float,
-        default=0.80,
+        default=0.95,
         help="Empirical win rate (0-1) required to graduate a candidate to final winner",
     )
     return parser.parse_args()
