@@ -1,19 +1,28 @@
-"""Business idea template definitions and the idea-bank loader.
+"""The `BusinessIdea` shape shared by the generator, engine, and logger.
 
-Each BusinessIdea is a bootstrapped, shoestring-budget concept sized to
-survive (or fail) on ~SGD 500 starting capital plus SGD 350/month, not a
-venture-scale business. `risk_traits` are 0..1 weights that make certain
-stress events more (or less) likely to hit this idea - see events.py.
+Concrete ideas are produced at runtime by `simulator.generator.IdeaGenerator`
+from a combinatorial space of business-model archetypes, niches, and
+monetization variants (see `data/archetypes.json`, `data/niches.json`,
+`data/monetization.json`) - there is no fixed idea bank to load.
 
-Recognized trait keys: ad_dependency, market_volatility, capital_intensity,
-supply_chain_risk, competitive_pressure, regulatory_exposure,
-customer_concentration.
+Automation-only rule: every archetype in that combinatorial space must be
+something Claude Code (or an equivalent AI coding agent) can run and operate
+end-to-end via code/APIs - content generation, listings, scheduling,
+fulfillment routing, customer support - with no required physical presence
+or manual human labor. This is enforced by curation of `data/archetypes.json`,
+not by runtime validation: when adding a new archetype, only add one that
+satisfies this rule.
+
+Recognized trait keys (8): ad_dependency, market_volatility,
+capital_intensity, supply_chain_risk, competitive_pressure,
+regulatory_exposure, customer_concentration, platform_dependency.
+`platform_dependency` covers the risk most central to an AI/API-run
+business: a payment processor, ad network, marketplace, or API provider
+suspending the account, revoking access, or changing terms without warning.
 """
 
-import json
 from dataclasses import dataclass
-from pathlib import Path
-from typing import Dict, List
+from typing import Dict
 
 
 @dataclass
@@ -35,8 +44,3 @@ class BusinessIdea:
     @classmethod
     def from_dict(cls, d: dict) -> "BusinessIdea":
         return cls(**d)
-
-
-def load_idea_bank(path: str) -> List[BusinessIdea]:
-    raw = json.loads(Path(path).read_text())
-    return [BusinessIdea.from_dict(item) for item in raw]

@@ -152,6 +152,19 @@ EVENT_LIBRARY: List[StressEvent] = [
         extra_cost_range=(400.0, 900.0),
         duration_months_range=(1, 1),
     ),
+    StressEvent(
+        name="Platform Account Suspension / API Revoked",
+        description="A critical platform (payment processor, ad network, marketplace, or API "
+        "provider) suspends the account, revokes API access, or changes its terms of service "
+        "without warning, cutting off distribution or fulfillment.",
+        base_probability=0.05,
+        trait_key="platform_dependency",
+        trait_multiplier_strength=2.0,
+        revenue_impact_range=(-0.5, -0.15),
+        cac_impact_range=(0.0, 0.2),
+        extra_cost_range=(50.0, 200.0),
+        duration_months_range=(1, 3),
+    ),
 ]
 
 
