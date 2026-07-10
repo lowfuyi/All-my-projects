@@ -5,12 +5,17 @@ the winning idea here is meant to be taken into real life, this re-runs the
 same idea `config.graduation_trials` more times (fresh capital/RNG each
 trial, identical to a normal iteration) and only treats it as validated if
 its empirical success rate clears `config.graduation_win_rate_threshold`.
+
+Also tracks `avg_months_to_success` (mean months_survived across the trials
+that succeeded) so the auto-iteration loop can favour whichever validated
+idea gets to a proven, resilient profit fastest, rather than just the first
+one that happens to clear the bar.
 """
 
 import random
 from collections import Counter
 from dataclasses import dataclass, field
-from typing import List
+from typing import List, Optional
 
 from .config import SimulationConfig
 from .engine import SimulationEngine
@@ -25,6 +30,7 @@ class GraduationResult:
     successes: int
     win_rate: float
     passed: bool
+    avg_months_to_success: Optional[float] = None
     outcome_breakdown: Counter = field(default_factory=Counter)
     failing_outcomes: List[IdeaOutcome] = field(default_factory=list)
 
@@ -38,6 +44,7 @@ class GraduationValidator:
         cfg = self.config
         breakdown: Counter = Counter()
         failing_outcomes: List[IdeaOutcome] = []
+        success_months: List[int] = []
         successes = 0
 
         for _ in range(cfg.graduation_trials):
@@ -45,10 +52,14 @@ class GraduationValidator:
             breakdown[outcome.outcome] += 1
             if outcome.outcome == "success":
                 successes += 1
+                success_months.append(outcome.months_survived)
             else:
                 failing_outcomes.append(outcome)
 
         win_rate = successes / cfg.graduation_trials if cfg.graduation_trials else 0.0
+        avg_months_to_success = (
+            sum(success_months) / len(success_months) if success_months else None
+        )
 
         return GraduationResult(
             idea_id=idea.id,
@@ -56,6 +67,7 @@ class GraduationValidator:
             successes=successes,
             win_rate=win_rate,
             passed=win_rate >= cfg.graduation_win_rate_threshold,
+            avg_months_to_success=avg_months_to_success,
             outcome_breakdown=breakdown,
             failing_outcomes=failing_outcomes,
         )

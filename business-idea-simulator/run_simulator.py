@@ -8,10 +8,14 @@ the lessons learned, reset capital, and repeat.
 
 Clearing the single-run success bar isn't the end: since a "winning" idea
 here is meant to be taken into real life, it's re-simulated `graduation_trials`
-more times and only crowned the final winner if it clears
-`graduation_win_rate_threshold` empirically. If `--max-ideas` is exhausted
-without any idea graduating, the strongest observed candidate is reported,
-clearly labeled as not fully validated.
+more times and only counts as validated if it clears
+`graduation_win_rate_threshold` empirically. The loop does NOT stop at the
+first validated candidate - it keeps searching through the full
+`--max-ideas` budget, and the final winner is whichever validated candidate
+reaches the success bar fastest on average (lowest `avg_months_to_success`
+across its graduation trials), not just the first one found. If
+`--max-ideas` is exhausted with nothing validated, the strongest observed
+candidate is reported, clearly labeled as not fully validated.
 """
 
 import argparse
@@ -93,7 +97,9 @@ def main() -> None:
 
     tried_combos = set()
     risk_tags_to_avoid = []
-    best_candidate = None  # {"idea": ..., "win_rate": ..., "trials_run": ...}
+    best_candidate = None  # {"idea": ..., "win_rate": ..., "trials_run": ...} - fallback if nothing graduates
+    graduated_candidates = []  # [{"idea": ..., "grad": GraduationResult}] - every validated pass
+    winning_iteration = {}  # idea.id -> iteration first graduated, for reporting
     current_idea = selector.select_next(tried_combos, risk_tags_to_avoid)
 
     for iteration in range(1, config.max_ideas + 1):
@@ -115,14 +121,16 @@ def main() -> None:
                 }
 
             if grad.passed:
-                logger.log_final_winner(iteration, current_idea, grad)
-                return
-
-            report = analyzer.analyze_batch(current_idea, grad.failing_outcomes)
-            logger.log_root_cause(report)
-            risk_tags_to_avoid = list(
-                dict.fromkeys(risk_tags_to_avoid + report.risk_tags_to_avoid)
-            )[:5]
+                # Validated - but keep searching the full budget for a faster winner
+                # rather than stopping here (rule: favour shortest time-to-success).
+                graduated_candidates.append({"idea": current_idea, "grad": grad})
+                winning_iteration[current_idea.id] = iteration
+            else:
+                report = analyzer.analyze_batch(current_idea, grad.failing_outcomes)
+                logger.log_root_cause(report)
+                risk_tags_to_avoid = list(
+                    dict.fromkeys(risk_tags_to_avoid + report.risk_tags_to_avoid)
+                )[:5]
         else:
             report = analyzer.analyze(current_idea, outcome)
             logger.log_root_cause(report)
@@ -133,7 +141,17 @@ def main() -> None:
         current_idea = selector.select_next(tried_combos, risk_tags_to_avoid)
         logger.log_next_pick(current_idea)
 
-    logger.log_exhausted_with_best_candidate(config.max_ideas, best_candidate)
+    if graduated_candidates:
+        logger.log_graduated_candidates(graduated_candidates)
+        winner = min(graduated_candidates, key=lambda c: c["grad"].avg_months_to_success)
+        logger.log_final_winner(
+            winning_iteration[winner["idea"].id],
+            winner["idea"],
+            winner["grad"],
+            total_graduates=len(graduated_candidates),
+        )
+    else:
+        logger.log_exhausted_with_best_candidate(config.max_ideas, best_candidate)
 
 
 if __name__ == "__main__":

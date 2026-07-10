@@ -56,7 +56,13 @@ class SimulationLogger:
             f"{grad.trials_run} repeated trials..."
         )
         breakdown = ", ".join(f"{count}x {name}" for name, count in grad.outcome_breakdown.most_common())
+        time_str = (
+            f"{grad.avg_months_to_success:.1f} months avg to success"
+            if grad.avg_months_to_success is not None
+            else "n/a"
+        )
         print(f"  Graduation result: {grad.successes}/{grad.trials_run} succeeded ({grad.win_rate:.0%} win rate)")
+        print(f"  Time to success: {time_str}")
         print(f"  Trial breakdown: {breakdown}")
         print(f"  {'PASSED' if grad.passed else 'DID NOT PASS'} the graduation threshold.")
 
@@ -67,16 +73,40 @@ class SimulationLogger:
             "successes": grad.successes,
             "win_rate": grad.win_rate,
             "passed": grad.passed,
+            "avg_months_to_success": grad.avg_months_to_success,
             "outcome_breakdown": dict(grad.outcome_breakdown),
         }
         path.write_text(json.dumps(payload, indent=2))
 
-    def log_final_winner(self, iteration: int, idea: BusinessIdea, grad: GraduationResult) -> None:
+    def log_graduated_candidates(self, graduated: list) -> None:
+        """Write every candidate that passed graduation, ranked fastest-first."""
+        ranked = sorted(graduated, key=lambda c: c["grad"].avg_months_to_success)
+        path = self.results_dir / "graduated_candidates.json"
+        path.write_text(
+            json.dumps(
+                [
+                    {
+                        "rank": i + 1,
+                        "idea": asdict(c["idea"]),
+                        "win_rate": c["grad"].win_rate,
+                        "avg_months_to_success": c["grad"].avg_months_to_success,
+                        "trials_run": c["grad"].trials_run,
+                    }
+                    for i, c in enumerate(ranked)
+                ],
+                indent=2,
+            )
+        )
+
+    def log_final_winner(
+        self, iteration: int, idea: BusinessIdea, grad: GraduationResult, total_graduates: int
+    ) -> None:
         print(f"\n{'=' * 70}")
         print(
-            f"WINNER after {iteration} idea(s): '{idea.name}' ({idea.category})\n"
-            f"Validated across {grad.trials_run} repeated trials at a "
-            f"{grad.win_rate:.0%} empirical success rate."
+            f"WINNER (found on idea #{iteration}): '{idea.name}' ({idea.category})\n"
+            f"Fastest among {total_graduates} validated candidate(s) - "
+            f"{grad.avg_months_to_success:.1f} months average to reach the success bar, "
+            f"at a {grad.win_rate:.0%} empirical success rate across {grad.trials_run} trials."
         )
         print(idea.description)
         print(f"{'=' * 70}")
@@ -91,7 +121,9 @@ class SimulationLogger:
                         "successes": grad.successes,
                         "win_rate": grad.win_rate,
                         "passed": grad.passed,
+                        "avg_months_to_success": grad.avg_months_to_success,
                     },
+                    "total_graduated_candidates": total_graduates,
                 },
                 indent=2,
             )

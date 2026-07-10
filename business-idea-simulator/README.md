@@ -118,7 +118,7 @@ to comfortably absorb the longer success streak.
 **Layer 2 - repeated-trial validation ("graduation").** Clearing layer 1
 once doesn't crown a winner. `simulator/validation.py`'s
 `GraduationValidator` re-simulates the *same* idea **100 more times** (fresh
-capital and RNG each trial) and only declares it the final winner if its
+capital and RNG each trial) and only counts it as validated if its
 empirical success rate is **≥ 95%**. That's a genuinely hard bar - testing
 across the strongest archetypes showed true win rates typically in the
 50-92% range, with only the luckiest specific niche/monetization draws
@@ -132,6 +132,20 @@ graduating, the run reports the strongest candidate observed - clearly
 labeled **NOT FULLY VALIDATED** - so it's never mistaken for a proven
 winner.
 
+**Favouring speed among validated candidates.** The loop does not stop at
+the first idea that graduates. Since the winner is meant to be built in
+real life, a business that takes 60 months to prove itself is a much bigger
+commitment than one that takes 15 - so the loop keeps searching the full
+`--max-ideas` budget, collects *every* candidate that clears the 95% bar,
+and declares the final winner as whichever one reaches the success bar
+**fastest on average** (`avg_months_to_success`, the mean months-to-success
+across its 100 graduation trials - not a single run's noisy timing).
+Because there's no early stop, every run uses its full iteration budget;
+this is pure-Python arithmetic, so even 30 iterations complete in about a
+second. Every validated candidate (not just the winner) is written to
+`results/graduated_candidates.json`, ranked fastest-first, so you can see
+the runner-ups too.
+
 ### 7. Auto-iteration loop
 
 `run_simulator.py` drives the loop end to end:
@@ -142,13 +156,15 @@ winner.
    stress-event traits hit hardest and whether the idea's own margin/cost
    structure was already fragile, producing risk traits to avoid.
 4. On a layer-1 success, `GraduationValidator` runs the layer-2 repeated
-   trials; on graduation failure, `RootCauseAnalyzer.analyze_batch()`
+   trials. A pass is recorded as a graduated candidate (search continues -
+   see above); on graduation failure, `RootCauseAnalyzer.analyze_batch()`
    aggregates root causes across the whole trial batch.
 5. `IdeaSelector` generates the next candidate combo, scored to avoid the
    accumulated risk traits.
-6. Capital resets to the defaults above and the loop repeats, up to
-   `--max-ideas` iterations (default 30) or until an idea graduates,
-   whichever comes first.
+6. Capital resets to the defaults above and the loop repeats for the full
+   `--max-ideas` budget (default 30). At the end, the winner is the fastest
+   graduated candidate, or the best-observed-but-unvalidated candidate if
+   nothing graduated.
 
 ## File structure
 
@@ -204,12 +220,15 @@ Each run writes to `results/` (default):
   the per-month `margin`), for spreadsheet analysis or charting.
 - `<idea_id>_root_cause.json` - the root-cause report for any idea that
   failed a single run or failed graduation.
-- `<idea_id>_graduation.json` - the graduation trial breakdown for any idea
-  that cleared the single-run bar.
-- `winner.json` - the final validated winner's idea + graduation stats, if
-  one graduated.
+- `<idea_id>_graduation.json` - the graduation trial breakdown (including
+  `avg_months_to_success`) for any idea that cleared the single-run bar.
+- `graduated_candidates.json` - every candidate that passed graduation,
+  ranked fastest-first by `avg_months_to_success` - written only if at
+  least one candidate graduated.
+- `winner.json` - the fastest validated winner's idea + graduation stats
+  (and how many candidates it was chosen among), if one graduated.
 - `best_candidate_not_validated.json` - the strongest candidate observed if
-  `--max-ideas` was exhausted without a graduation.
+  `--max-ideas` was exhausted without any graduation.
 - `master_log.csv` - one row per iteration across the whole run (idea,
   outcome, months survived, final cash), appended across the loop.
 
